@@ -32,8 +32,8 @@ export interface Person {
   /** Whether the person is blocked by another person on this frame. */
   blocked: boolean;
   /**
-   * Randomised display colour assigned at build time, so each guest is
-   * visually distinguishable in the crowd. CSS-style `hsl(...)` string.
+   * Display colour assigned at build time (cycled through red / green / yellow /
+   * blue). CSS colour string (e.g. `hsl(...)`).
    */
   color: string;
 }
@@ -58,26 +58,18 @@ export const resetPersonIdCounter = (): void => {
   counter = 0;
 };
 
-/**
- * Visually distinct colours via the golden-angle hue distribution. Adjacent
- * indices land far apart on the colour wheel, which matters in a crowded
- * lane where each guest is only a few centimetres from the next one.
- *
- * The phase shift is randomised once per build so each reset gives a fresh
- * palette without losing the within-build distinguishability.
- */
-const GOLDEN_ANGLE_DEG = 137.508;
+/** Fixed palette cycled by seat order so guests stay visually distinct. */
+const PERSON_COLORS = [
+  "hsl(0, 72%, 58%)", // red
+  "hsl(142, 65%, 48%)", // green
+  "hsl(48, 92%, 54%)", // yellow
+  "hsl(217, 88%, 58%)", // blue
+] as const;
 
 export const createColorPalette = (count: number): string[] => {
-  const phaseShift = Math.random() * 360;
   const colors: string[] = [];
   for (let i = 0; i < count; i++) {
-    const hue = (i * GOLDEN_ANGLE_DEG + phaseShift) % 360;
-    // Vivid mid-tone HSL: saturated enough to stand out on the dark floor,
-    // but not pure neon so the ones tagged "blocked" (red) still pop.
-    const saturation = 72;
-    const lightness = 60;
-    colors.push(`hsl(${hue.toFixed(1)}, ${saturation}%, ${lightness}%)`);
+    colors.push(PERSON_COLORS[i % PERSON_COLORS.length]!);
   }
   return colors;
 };
