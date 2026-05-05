@@ -2,7 +2,7 @@
 
 ![Efficient Exit banner](assets/images/banner-image.png)
 
-> Simulate. Compare. Optimize. Visualise smarter ways for crowds to leave.
+> Simulate. Compare. Optimize. Visualize smarter ways for crowds to leave.
 
 You know that awkward moment at the end of a wedding ceremony where everyone
 stands up at exactly the same time, gets stuck in the aisle, and the front
@@ -16,7 +16,7 @@ tracks elapsed time, congestion, and final completion time so you can
 actually compare strategies instead of just arguing about them at brunch.
 
 Behind the scenes it's a small simulation engine doing all the boring stuff
-that makes the visualisation feel honest: axis-aligned bounding boxes, a
+that makes the visualization feel honest: axis-aligned bounding boxes, a
 uniform-grid spatial hash for broad-phase collision, in-tick grid commits
 for stable queueing, axis-aligned slide-along-obstacle resolution to
 prevent perpendicular paths from deadlocking, and lane discipline so the
@@ -179,7 +179,7 @@ docs/
    resolves collisions for everyone in motion, and writes a small reactive
    stats snapshot back to the store.
 4. People + collision debug visuals are rendered as **single instanced
-   meshes** whose per-instance matrices and colours are updated directly
+   meshes** whose per-instance matrices and colors are updated directly
    inside `useFrame` from `useSimulationStore.getState()` — no React
    re-renders per frame.
 
@@ -210,7 +210,7 @@ exporting a new factory and registering it in
   so that touching edges don't false-positive as collisions.
 - Resolver: tries the full diagonal step first, then x-only, then z-only,
   at full / half / quarter step sizes. This "slide along the obstacle"
-  behaviour prevents perpendicular paths from deadlocking on grazing
+  behavior prevents perpendicular paths from deadlocking on grazing
   contacts.
 - Yield rule: if a person is *already* overlapping a blocker, moves are
   still permitted as long as the overlap with that blocker doesn't get
