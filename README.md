@@ -15,8 +15,7 @@ people-shaped boxes thread their way through the aisle. A live stats panel
 tracks elapsed time, congestion, and final completion time so you can
 actually compare strategies instead of just arguing about them at brunch.
 
-Behind the scenes it's a small simulation engine doing all the boring stuff
-that makes the visualization feel honest: axis-aligned bounding boxes, a
+Behind the scenes it's a small simulation engine doing everything that makes the visualization feel honest: axis-aligned bounding boxes, a
 uniform-grid spatial hash for broad-phase collision, in-tick grid commits
 for stable queueing, axis-aligned slide-along-obstacle resolution to
 prevent perpendicular paths from deadlocking, and lane discipline so the

@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { MapControls, OrthographicCamera } from "@react-three/drei";
+import { useThree } from "@react-three/fiber";
+import type { OrthographicCamera as ThreeOrthographicCamera } from "three";
 import { SIM_DEFAULTS } from "@/lib/constants/simulation";
 import { useSimulationStore } from "../stores/useSimulationStore";
 import { useUiStore } from "../stores/useUiStore";
@@ -22,31 +24,67 @@ export function RoomScene({ worldVersion }: RoomSceneProps) {
   const world = useSimulationStore((state) => state.world);
   const debug = useUiStore((state) => state.debug);
   const cameraResetTrigger = useUiStore((state) => state.cameraResetTrigger);
+  const canvasSize = useThree((state) => state.size);
 
+  const cameraRef = useRef<ThreeOrthographicCamera>(null);
   const controlsRef = useRef<React.ComponentRef<typeof MapControls>>(null);
 
-  const cameraView = useMemo(() => {
-    if (!world) return { width: 12, depth: 16 };
+  const cameraFrustum = useMemo(() => {
+    const roomWidth = world
+      ? world.geometry.width + SIM_DEFAULTS.cameraPaddingX
+      : 12;
+    const roomDepth = world
+      ? world.geometry.depth + SIM_DEFAULTS.cameraPaddingZ
+      : 16;
+    const roomAspect = roomWidth / roomDepth;
+    const hasValidViewport = canvasSize.width > 0 && canvasSize.height > 0;
+    const viewportAspect = hasValidViewport
+      ? canvasSize.width / canvasSize.height
+      : roomAspect;
+
+    if (viewportAspect >= roomAspect) {
+      const halfHeight = roomDepth / 2;
+      return {
+        halfHeight,
+        halfWidth: halfHeight * viewportAspect,
+      };
+    }
+
+    const halfWidth = roomWidth / 2;
     return {
-      width: world.geometry.width + SIM_DEFAULTS.cameraPaddingX,
-      depth: world.geometry.depth + SIM_DEFAULTS.cameraPaddingZ,
+      halfWidth,
+      halfHeight: halfWidth / viewportAspect,
     };
-  }, [world]);
+  }, [canvasSize.height, canvasSize.width, world]);
+
+  const resetCameraView = useCallback(() => {
+    const camera = cameraRef.current;
+    const controls = controlsRef.current;
+    if (!camera || !controls) return;
+
+    camera.position.set(0, 30, 0);
+    camera.rotation.set(-Math.PI / 2, 0, 0);
+    camera.zoom = 1;
+    camera.updateProjectionMatrix();
+
+    controls.target.set(0, 0, 0);
+    controls.update();
+  }, []);
 
   useEffect(() => {
-    controlsRef.current?.reset();
-  }, [cameraResetTrigger, worldVersion]);
+    resetCameraView();
+  }, [cameraResetTrigger, resetCameraView, worldVersion]);
 
   if (!world) return null;
 
-  const aspect = cameraView.width / cameraView.depth;
-  const halfHeight = cameraView.depth / 2;
-  const halfWidth = halfHeight * aspect;
+  const { halfWidth, halfHeight } = cameraFrustum;
 
   return (
     <>
       <OrthographicCamera
+        ref={cameraRef}
         makeDefault
+        manual
         position={[0, 30, 0]}
         zoom={1}
         left={-halfWidth}
