@@ -10,7 +10,12 @@ import {
   type PersonState,
 } from "../models/person";
 import { computeRoomGeometry, type RoomConfig, type RoomGeometry } from "../models/room";
-import { buildWaypoints } from "../pathing/waypointPlanner";
+import {
+  buildWaypoints,
+  clampActiveExitDirections,
+  exitsForDirectionCount,
+  type ActiveExitDirections,
+} from "../pathing/waypointPlanner";
 import { CollisionResolver } from "../collision/collisionResolver";
 
 export interface SimulationConfig {
@@ -25,6 +30,11 @@ export interface SimulationConfig {
   burstSize: number;
   /** Global animation speed multiplier (1 = real-time). */
   animationSpeed: number;
+  /**
+   * Active exits in order: 1 = south only, 2 = south+north, 3 = +east,
+   * 4 = all four cardinals.
+   */
+  activeExitDirections: ActiveExitDirections;
 }
 
 export type SimulationStatus = "idle" | "playing" | "paused" | "complete";
@@ -67,7 +77,13 @@ const buildPeople = (
       width: sim.personWidth,
       depth: sim.personDepth,
       speed: sim.personSpeed,
-      waypoints: buildWaypoints(chair, cfg, geo),
+      waypoints: buildWaypoints(
+        chair,
+        cfg,
+        geo,
+        chairs,
+        clampActiveExitDirections(sim.activeExitDirections),
+      ),
       color: palette[index]!,
     }),
   );
@@ -105,6 +121,37 @@ const setPersonState = (person: Person, next: PersonState): void => {
 const advanceWaypoint = (person: Person, target: Vec2): boolean => {
   const dist = distanceXZ(person.position, target);
   return dist < 0.05;
+};
+
+const hasExitedThroughActiveOpening = (
+  position: Vec2,
+  world: SimulationWorld,
+): boolean => {
+  const { geometry: geo, roomConfig: cfg, simulationConfig: sim } = world;
+  const enabled = exitsForDirectionCount(
+    clampActiveExitDirections(sim.activeExitDirections),
+  );
+  const half = cfg.exitWidth / 2;
+  const outside = cfg.exitDepth * 0.2;
+
+  const throughSouth =
+    enabled.includes("south") &&
+    position.z < geo.exitSouthZ - outside &&
+    Math.abs(position.x) <= half;
+  const throughNorth =
+    enabled.includes("north") &&
+    position.z > geo.exitNorthZ + outside &&
+    Math.abs(position.x) <= half;
+  const throughEast =
+    enabled.includes("east") &&
+    position.x > geo.exitEastX + outside &&
+    Math.abs(position.z) <= half;
+  const throughWest =
+    enabled.includes("west") &&
+    position.x < geo.exitWestX - outside &&
+    Math.abs(position.z) <= half;
+
+  return throughSouth || throughNorth || throughEast || throughWest;
 };
 
 /**
@@ -146,7 +193,13 @@ export const stepWorld = (
 
   algorithm.update?.(ctx, deltaTime);
 
-  world.resolver.rebuild(world.people, world.chairs);
+  world.resolver.rebuild(
+    world.people,
+    world.chairs,
+    world.roomConfig,
+    world.geometry,
+    world.simulationConfig.activeExitDirections,
+  );
 
   let activeCollisions = 0;
 
@@ -159,8 +212,13 @@ export const stepWorld = (
 
     const target = person.waypoints[person.waypointIndex];
     if (!target) {
-      setPersonState(person, "exited");
-      person.exitedAt = world.elapsedTime;
+      if (hasExitedThroughActiveOpening(person.position, world)) {
+        setPersonState(person, "exited");
+        person.exitedAt = world.elapsedTime;
+        world.resolver.commitMove(person);
+      } else if (person.waypoints.length > 0) {
+        person.waypointIndex = person.waypoints.length - 1;
+      }
       continue;
     }
 
@@ -182,9 +240,13 @@ export const stepWorld = (
     if (advanceWaypoint(person, target)) {
       person.waypointIndex += 1;
       if (person.waypointIndex >= person.waypoints.length) {
-        setPersonState(person, "exited");
-        person.exitedAt = world.elapsedTime;
-        world.resolver.commitMove(person);
+        if (hasExitedThroughActiveOpening(person.position, world)) {
+          setPersonState(person, "exited");
+          person.exitedAt = world.elapsedTime;
+          world.resolver.commitMove(person);
+        } else {
+          person.waypointIndex = Math.max(person.waypoints.length - 1, 0);
+        }
       }
     }
   }

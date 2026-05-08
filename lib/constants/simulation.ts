@@ -4,7 +4,7 @@
  * Coordinate system (matches Three.js right-handed coordinates with the
  * camera aimed straight down the -Y axis):
  *   - x: chair-row direction (left/right when viewed from above)
- *   - z: row depth direction (back of the room is +z, exit is -z)
+ *   - z: row depth direction (back of the room is +z; wall exits at ±x and ±z)
  *   - y: vertical (only used to lift meshes off the floor for shading)
  *
  * Distances are in metres. Times are in seconds.
@@ -32,6 +32,8 @@ export const SIM_DEFAULTS = {
   // ≈ 0.5 s minimum, so 0.6 s leaves a comfortable margin.
   departureInterval: 0.6,
   burstSize: 2,
+  /** Match simulation `activeExitDirections`: south → north → east → west. */
+  activeExitDirections: 4,
 
   cameraPaddingX: 2,
   cameraPaddingZ: 4,

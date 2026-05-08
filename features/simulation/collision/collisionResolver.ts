@@ -1,6 +1,12 @@
 import { aabbFromCenter, type AABB, type Vec2 } from "@/lib/math/aabb";
 import type { Chair } from "../models/chair";
 import type { Person } from "../models/person";
+import type { RoomConfig, RoomGeometry } from "../models/room";
+import {
+  clampActiveExitDirections,
+  exitsForDirectionCount,
+  type ActiveExitDirections,
+} from "../pathing/waypointPlanner";
 import { SpatialGrid, type GridEntry } from "./spatialGrid";
 
 /**
@@ -71,6 +77,138 @@ const buildChairAabb = (chair: Chair, padding: number): AABB =>
     padding,
   );
 
+const WALL_THICKNESS = 0.2;
+
+const makeHorizontalWall = (
+  id: string,
+  z: number,
+  x0: number,
+  x1: number,
+): GridEntry<StaticEntity> | null => {
+  const width = Math.abs(x1 - x0);
+  if (width <= 1e-6) return null;
+  return {
+    id,
+    bounds: aabbFromCenter((x0 + x1) / 2, z, width, WALL_THICKNESS, 0),
+    payload: { kind: "wall" },
+  };
+};
+
+const makeVerticalWall = (
+  id: string,
+  x: number,
+  z0: number,
+  z1: number,
+): GridEntry<StaticEntity> | null => {
+  const depth = Math.abs(z1 - z0);
+  if (depth <= 1e-6) return null;
+  return {
+    id,
+    bounds: aabbFromCenter(x, (z0 + z1) / 2, WALL_THICKNESS, depth, 0),
+    payload: { kind: "wall" },
+  };
+};
+
+const buildWallEntries = (
+  cfg: RoomConfig,
+  geo: RoomGeometry,
+  activeDirections: ActiveExitDirections,
+): GridEntry<StaticEntity>[] => {
+  const enabled = exitsForDirectionCount(
+    clampActiveExitDirections(activeDirections),
+  );
+  const halfW = geo.width / 2;
+  const halfD = geo.depth / 2;
+  const openHalf = cfg.exitWidth / 2;
+  const walls: GridEntry<StaticEntity>[] = [];
+
+  // South wall (-Z)
+  if (enabled.includes("south")) {
+    const left = makeHorizontalWall(
+      "wall-south-left",
+      geo.exitSouthZ,
+      -halfW,
+      -openHalf,
+    );
+    const right = makeHorizontalWall(
+      "wall-south-right",
+      geo.exitSouthZ,
+      openHalf,
+      halfW,
+    );
+    if (left) walls.push(left);
+    if (right) walls.push(right);
+  } else {
+    const full = makeHorizontalWall("wall-south", geo.exitSouthZ, -halfW, halfW);
+    if (full) walls.push(full);
+  }
+
+  // North wall (+Z)
+  if (enabled.includes("north")) {
+    const left = makeHorizontalWall(
+      "wall-north-left",
+      geo.exitNorthZ,
+      -halfW,
+      -openHalf,
+    );
+    const right = makeHorizontalWall(
+      "wall-north-right",
+      geo.exitNorthZ,
+      openHalf,
+      halfW,
+    );
+    if (left) walls.push(left);
+    if (right) walls.push(right);
+  } else {
+    const full = makeHorizontalWall("wall-north", geo.exitNorthZ, -halfW, halfW);
+    if (full) walls.push(full);
+  }
+
+  // West wall (-X)
+  if (enabled.includes("west")) {
+    const top = makeVerticalWall(
+      "wall-west-top",
+      geo.exitWestX,
+      openHalf,
+      halfD,
+    );
+    const bottom = makeVerticalWall(
+      "wall-west-bottom",
+      geo.exitWestX,
+      -halfD,
+      -openHalf,
+    );
+    if (top) walls.push(top);
+    if (bottom) walls.push(bottom);
+  } else {
+    const full = makeVerticalWall("wall-west", geo.exitWestX, -halfD, halfD);
+    if (full) walls.push(full);
+  }
+
+  // East wall (+X)
+  if (enabled.includes("east")) {
+    const top = makeVerticalWall(
+      "wall-east-top",
+      geo.exitEastX,
+      openHalf,
+      halfD,
+    );
+    const bottom = makeVerticalWall(
+      "wall-east-bottom",
+      geo.exitEastX,
+      -halfD,
+      -openHalf,
+    );
+    if (top) walls.push(top);
+    if (bottom) walls.push(bottom);
+  } else {
+    const full = makeVerticalWall("wall-east", geo.exitEastX, -halfD, halfD);
+    if (full) walls.push(full);
+  }
+
+  return walls;
+};
+
 /**
  * Resolve broad-phase + narrow-phase collisions for the moving population.
  *
@@ -89,7 +227,13 @@ export class CollisionResolver {
     this.grid = new SpatialGrid(options.cellSize);
   }
 
-  rebuild(people: Person[], chairs: Chair[]): void {
+  rebuild(
+    people: Person[],
+    chairs: Chair[],
+    roomConfig: RoomConfig,
+    geometry: RoomGeometry,
+    activeExitDirections: ActiveExitDirections,
+  ): void {
     this.grid.clear();
 
     for (const person of people) {
@@ -107,6 +251,14 @@ export class CollisionResolver {
         bounds: buildChairAabb(chair, 0),
         payload: { kind: "chair", chair },
       });
+    }
+
+    for (const wall of buildWallEntries(
+      roomConfig,
+      geometry,
+      activeExitDirections,
+    )) {
+      this.grid.insert(wall);
     }
   }
 

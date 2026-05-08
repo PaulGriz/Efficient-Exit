@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { SIM_DEFAULTS } from "@/lib/constants/simulation";
 import type { RoomConfig } from "../models/room";
 import type { SimulationConfig } from "../engine/simulationEngine";
+import { clampActiveExitDirections } from "../pathing/waypointPlanner";
 
 export interface ConfigState {
   roomConfig: RoomConfig;
@@ -37,6 +38,7 @@ const defaultSimulationConfig: SimulationConfig = {
   departureInterval: SIM_DEFAULTS.departureInterval,
   burstSize: SIM_DEFAULTS.burstSize,
   animationSpeed: SIM_DEFAULTS.animationSpeed,
+  activeExitDirections: clampActiveExitDirections(SIM_DEFAULTS.activeExitDirections),
 };
 
 export const useConfigStore = create<ConfigState>((set, get) => ({
@@ -55,6 +57,11 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
   },
   setSimulationConfig(patch) {
     const nextSim = { ...get().simulationConfig, ...patch };
+    if (patch.activeExitDirections !== undefined) {
+      nextSim.activeExitDirections = clampActiveExitDirections(
+        patch.activeExitDirections,
+      );
+    }
     const cap = totalChairs(get().roomConfig);
     set({
       simulationConfig: {
