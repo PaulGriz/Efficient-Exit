@@ -34,6 +34,7 @@ const simulationConfig: SimulationConfig = {
   departureInterval: SIM_DEFAULTS.departureInterval,
   burstSize: SIM_DEFAULTS.burstSize,
   animationSpeed: SIM_DEFAULTS.animationSpeed,
+  activeExitDirections: SIM_DEFAULTS.activeExitDirections,
 };
 
 const world = buildWorld({ roomConfig, simulationConfig });

@@ -16,7 +16,7 @@ export function SimulationCanvas() {
       gl={{ antialias: true, powerPreference: "high-performance" }}
       dpr={[1, 2]}
       style={{ background: "#0b1220" }}
-      aria-label="Overhead view of the wedding seating layout, with people moving toward the exit at the front."
+      aria-label="Overhead view of the wedding seating layout, with people moving toward the nearest wall exit."
       role="img"
     >
       <RoomScene worldVersion={worldVersion} />

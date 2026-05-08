@@ -117,7 +117,11 @@ export function RoomScene({ worldVersion }: RoomSceneProps) {
       <Chairs key={`chairs-${worldVersion}`} chairs={world.chairs} />
       <People key={`people-${worldVersion}`} people={world.people} />
       {debug.showExitZone ? (
-        <ExitZone geometry={world.geometry} config={world.roomConfig} />
+        <ExitZone
+          geometry={world.geometry}
+          config={world.roomConfig}
+          activeDirections={world.simulationConfig.activeExitDirections}
+        />
       ) : null}
       {debug.showPaths ? <Paths people={world.people} /> : null}
       {debug.showCollisionBoxes ? (

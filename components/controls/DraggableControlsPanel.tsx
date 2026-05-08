@@ -22,6 +22,10 @@ import {
   selectMaxPeople,
   useConfigStore,
 } from "@/features/simulation/stores/useConfigStore";
+import {
+  clampActiveExitDirections,
+  formatExitDirectionsLabel,
+} from "@/features/simulation/pathing/waypointPlanner";
 import { useSimulationStore } from "@/features/simulation/stores/useSimulationStore";
 import {
   isControlsPanelPositionSentinel,
@@ -291,6 +295,29 @@ function ControlsCard({
                 }
               }}
               aria-label="Exit width"
+            />
+          </Field>
+
+          <Field
+            label="Exit directions"
+            value={formatExitDirectionsLabel(sim.activeExitDirections)}
+            description="Adds exits in order: south, north, east, then west."
+          >
+            <Slider
+              value={[sim.activeExitDirections]}
+              min={1}
+              max={4}
+              step={1}
+              onValueChange={(values) => {
+                const next = values[0];
+                if (typeof next === "number") {
+                  setSimulationConfig({
+                    activeExitDirections: clampActiveExitDirections(next),
+                  });
+                  reset();
+                }
+              }}
+              aria-label="Number of active exit directions"
             />
           </Field>
 
